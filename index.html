@@ -84,16 +84,16 @@
                         <i data-lucide="package-plus"></i>
                         <h2>1. INTRARE CUSTODIE</h2>
                         <p>Scanează aviz pentru adăugare în stoc</p>
-                        <input type="file" id="file-input-in" hidden accept="image/*,application/pdf">
-                        <button class="btn btn-primary" onclick="document.getElementById('file-input-in').click()">Alege Aviz Intrare</button>
+                        <input type="file" id="file-input-in" hidden accept="image/*" capture="environment">
+                        <button class="btn btn-primary" onclick="document.getElementById('file-input-in').click()">Alege / Scanează Aviz</button>
                     </div>
                     
                     <div class="upload-zone remove-zone" id="drop-zone-out">
                         <i data-lucide="package-minus"></i>
                         <h2>2. IEȘIRE CUSTODIE</h2>
                         <p>Scanează document pentru a scădea din stoc</p>
-                        <input type="file" id="file-input-out" hidden accept="image/*,application/pdf">
-                        <button class="btn btn-outline-danger" onclick="document.getElementById('file-input-out').click()">Alege Aviz Ieșire</button>
+                        <input type="file" id="file-input-out" hidden accept="image/*" capture="environment">
+                        <button class="btn btn-outline-danger" onclick="document.getElementById('file-input-out').click()">Alege / Scanează Ieșire</button>
                     </div>
                 </div>
 
