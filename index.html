@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CustodyFlow | Gestiune Marfă în Custodie</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i data-lucide="package-search"></i>
+                <span>CustodyFlow</span>
+            </div>
+            <nav>
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-view="scans">
+                    <i data-lucide="scan-line"></i> Avize Scanate
+                </a>
+                <a href="#" class="nav-item" data-view="inventory">
+                    <i data-lucide="boxes"></i> Stoc Custodie
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <p>v1.0.0</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header>
+                <div class="header-search">
+                    <i data-lucide="search"></i>
+                    <input type="text" placeholder="Caută produs sau aviz...">
+                </div>
+                <div class="user-profile">
+                    <div class="avatar">A</div>
+                </div>
+            </header>
+
+            <section id="dashboard" class="view">
+                <div class="welcome-banner">
+                    <h1>Bună ziua! 👋</h1>
+                    <p>Scanează avizele noi pentru a actualiza stocul în custodie.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="icon-box blue"><i data-lucide="file-text"></i></div>
+                        <div class="stat-info">
+                            <h3>Total Avize</h3>
+                            <p id="total-scans">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon-box purple"><i data-lucide="package"></i></div>
+                        <div class="stat-info">
+                            <h3>Produse Unice</h3>
+                            <p id="total-products">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon-box orange"><i data-lucide="info"></i></div>
+                        <div class="stat-info">
+                            <h3>Ultima Scanare</h3>
+                            <p id="last-scan-date">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="scanner-section">
+                    <div class="upload-zone" id="drop-zone">
+                        <i data-lucide="upload-cloud"></i>
+                        <h2>Încarcă Avizul</h2>
+                        <p>Trage fișierul aici sau apasă pentru a alege</p>
+                        <input type="file" id="file-input" hidden accept="image/*,application/pdf">
+                        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">Alege Fișier</button>
+                    </div>
+                </div>
+
+                <div class="recent-scans-section">
+                    <div class="section-header">
+                        <h2>Activitate Recentă</h2>
+                        <a href="#" onclick="switchView('scans')">Vezi tot</a>
+                    </div>
+                    <div class="table-container">
+                        <table id="recent-scans-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Nr. Aviz</th>
+                                    <th>Produse</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dinamic generation -->
+                                <tr class="empty-row"><td colspan="4">Nicio scanare recentă</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="inventory" class="view" style="display: none;">
+                <div class="section-header">
+                    <h1>Stoc în Custodie</h1>
+                    <button class="btn btn-outline" onclick="exportToCSV()">Exportă CSV</button>
+                </div>
+                <div class="table-container">
+                    <table id="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Nume Produs</th>
+                                <th>U.M.</th>
+                                <th>Cantitate Totală</th>
+                                <th>Acțiuni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-body">
+                            <!-- Dinamic generation -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="scans" class="view" style="display: none;">
+                <div class="section-header">
+                    <h1>Istoric Avize</h1>
+                </div>
+                <div class="scans-list" id="scans-list">
+                    <!-- Cards will be added here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for Extraction Result -->
+    <div id="extraction-modal" class="modal">
+        <div class="modal-content">
+            <h2>Date Extrase</h2>
+            <p>Verifică produsele identificate în aviz înainte de a le adăuga în stoc.</p>
+            <div class="extraction-items" id="extracted-items-preview">
+                <!-- Items list -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Anulează</button>
+                <button class="btn btn-primary" onclick="confirmExtraction()">Confirmă și Adaugă</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
