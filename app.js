@@ -1,20 +1,65 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+// TODO: Replace with the actual Firebase Config from the User
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase only if the config is not a placeholder
+let db = null;
+if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Lucide icons
     lucide.createIcons();
 
     // State
-    let scans = JSON.parse(localStorage.getItem('custody_scans')) || [];
-    let inventory = JSON.parse(localStorage.getItem('custody_inventory')) || {};
+    let scans = [];
+    let inventory = {};
 
     // Elements
     const views = document.querySelectorAll('.view');
     const navItems = document.querySelectorAll('.nav-item');
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
+    const dropZoneIn = document.getElementById('drop-zone-in');
+    const dropZoneOut = document.getElementById('drop-zone-out');
+    const fileInputIn = document.getElementById('file-input-in');
+    const fileInputOut = document.getElementById('file-input-out');
     const modal = document.getElementById('extraction-modal');
     const previewContainer = document.getElementById('extracted-items-preview');
 
     let currentExtraction = null;
+
+    // --- Firebase Listeners ---
+    if(db) {
+        const inventoryRef = ref(db, 'inventory');
+        onValue(inventoryRef, (snapshot) => {
+            inventory = snapshot.val() || {};
+            renderInventory();
+            updateStats();
+        });
+
+        const scansRef = ref(db, 'scans');
+        onValue(scansRef, (snapshot) => {
+            const data = snapshot.val();
+            // Convert object to array and sort by latest
+            scans = data ? Object.values(data).sort((a,b) => b.timestamp - a.timestamp) : [];
+            renderRecentScans();
+            renderScans();
+            updateStats();
+        });
+    } else {
+        alert("Configurarea Firebase lipsește! Aplicația va afișa un stoc gol până când adăugăm cheile bazei de date.");
+    }
 
     // --- Navigation ---
     function switchView(viewId) {
@@ -45,32 +90,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- File Handling & "OCR" Mock ---
-    dropZone.addEventListener('click', () => fileInput.click());
-    
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = 'var(--primary)';
-    });
+    function setupDropZone(zone, input, actionType) {
+        if (!zone) return; 
+        
+        zone.addEventListener('click', () => input.click());
+        
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.style.borderColor = actionType === 'add' ? 'var(--primary)' : '#ef4444';
+        });
 
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.style.borderColor = 'var(--border-glass)';
-    });
+        zone.addEventListener('dragleave', () => {
+            zone.style.borderColor = 'var(--border-glass)';
+        });
 
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const files = e.dataTransfer.files;
-        if(files.length > 0) handleFile(files[0]);
-    });
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.style.borderColor = 'var(--border-glass)';
+            const files = e.dataTransfer.files;
+            if(files.length > 0) handleFile(files[0], actionType);
+        });
 
-    fileInput.addEventListener('change', (e) => {
-        if(e.target.files.length > 0) handleFile(e.target.files[0]);
-    });
+        input.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) handleFile(e.target.files[0], actionType);
+        });
+    }
 
-    function handleFile(file) {
+    setupDropZone(dropZoneIn, fileInputIn, 'add');
+    setupDropZone(dropZoneOut, fileInputOut, 'remove');
+
+    function handleFile(file, actionType) {
+        if(!db) return alert("Baza de date nu este conectată!");
         console.log("Processing file:", file.name);
         
-        // Simulating smart extraction based on the provided sample document
-        // In a real scenario, this would be the output of an OCR/Vision API
         const realDataResults = [
             { id: 1, name: "BCA PERFORMO 20X25X65", unit: "PAL", qty: 1.000 },
             { id: 2, name: "OȚEL BETON FASONAT FI8", unit: "KG", qty: 327.210 },
@@ -87,17 +139,26 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 15, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 152.000 }
         ];
 
-        showExtraction(realDataResults, file.name);
+        showExtraction(realDataResults, file.name, actionType);
     }
 
-    function showExtraction(items, fileName) {
+    function showExtraction(items, fileName, actionType) {
         currentExtraction = {
             id: 'AVIZ-' + Math.floor(Math.random() * 10000),
             date: new Date().toLocaleDateString('ro-RO'),
+            timestamp: Date.now(),
             file: fileName,
-            items: items
+            items: items,
+            action: actionType
         };
 
+        const isAdd = actionType === 'add';
+        document.querySelector('.modal-content h2').textContent = isAdd ? 'Date Extrase (Intrare)' : 'Date Extrase (Ieșire)';
+        
+        const btnConfirm = document.querySelector('.modal-footer button:last-child');
+        btnConfirm.textContent = isAdd ? 'Confirmă și Adaugă' : 'Confirmă și Scade';
+        btnConfirm.className = isAdd ? 'btn btn-primary' : 'btn btn-outline-danger';
+        
         previewContainer.innerHTML = items.map(item => `
             <div class="extract-row">
                 <span><strong>${item.name}</strong></span>
@@ -113,33 +174,44 @@ document.addEventListener('DOMContentLoaded', () => {
         currentExtraction = null;
     };
 
-    window.confirmExtraction = () => {
-        if(!currentExtraction) return;
+    window.confirmExtraction = async () => {
+        if(!currentExtraction || !db) return;
 
-        // Add to history
-        scans.unshift(currentExtraction);
-        localStorage.setItem('custody_scans', JSON.stringify(scans));
+        // Push to history in DB
+        const scansRef = ref(db, 'scans');
+        push(scansRef, currentExtraction);
 
-        // Update Inventory
+        // Update Inventory in DB
+        const isAdd = currentExtraction.action === 'add';
+        
+        // We calculate locally and then push the whole state, 
+        // In a complex app we would use Firebase Transactions to avoid race conditions.
+        let updatedInventory = { ...inventory };
+
         currentExtraction.items.forEach(item => {
-            if(inventory[item.name]) {
-                inventory[item.name].qty += item.qty;
-            } else {
-                inventory[item.name] = { unit: item.unit, qty: item.qty };
+            if(updatedInventory[item.name]) {
+                updatedInventory[item.name].qty += isAdd ? item.qty : -item.qty;
+            } else if (isAdd) {
+                updatedInventory[item.name] = { unit: item.unit, qty: item.qty };
+            }
+            
+            // Remove if 0 or negative
+            if(updatedInventory[item.name] && updatedInventory[item.name].qty <= 0) {
+                delete updatedInventory[item.name];
             }
         });
-        localStorage.setItem('custody_inventory', JSON.stringify(inventory));
+
+        // Save back to DB
+        set(ref(db, 'inventory'), updatedInventory);
 
         closeModal();
-        renderRecentScans();
-        updateStats();
-        alert("Datele au fost adăugate cu succes!");
+        alert(isAdd ? "Datele au fost adăugate cu succes în Cloud!" : "Produsele au fost scăzute din stocul Cloud!");
     };
 
     // --- Rendering ---
     function renderRecentScans() {
         const tbody = document.querySelector('#recent-scans-table tbody');
-        if(scans.length === 0) {
+        if(!scans || scans.length === 0) {
             tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Nicio scanare recentă</td></tr>';
             return;
         }
@@ -149,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${scan.date}</td>
                 <td>${scan.id}</td>
                 <td>${scan.items.length} produse</td>
-                <td><span style="color: #4ade80;">Procesat</span></td>
+                <td><span style="color: ${scan.action === 'add' ? '#4ade80' : '#ef4444'};">${scan.action === 'add' ? 'Intrare' : 'Ieșire'}</span></td>
             </tr>
         `).join('');
     }
@@ -176,13 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.removeStock = (name) => {
+        if(!db) return;
         const amount = prompt(`Cât dorești să scazi din stocul pentru "${name}"?`);
         if(amount && !isNaN(amount)) {
-            inventory[name].qty -= parseFloat(amount);
-            if(inventory[name].qty <= 0) delete inventory[name];
-            localStorage.setItem('custody_inventory', JSON.stringify(inventory));
-            renderInventory();
-            updateStats();
+            let updatedInventory = { ...inventory };
+            updatedInventory[name].qty -= parseFloat(amount);
+            if(updatedInventory[name].qty <= 0) delete updatedInventory[name];
+            
+            set(ref(db, 'inventory'), updatedInventory);
         }
     };
 
@@ -212,13 +285,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const a = document.createElement('a');
         a.setAttribute('hidden', '');
         a.setAttribute('href', url);
-        a.setAttribute('download', 'stoc_custodie.csv');
+        a.setAttribute('download', 'stoc_custodie_cloud.csv');
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
     };
 
-    // Initial render
+    // Initial render call (will be overwritten by Firebase when data loads)
     renderRecentScans();
     updateStats();
 });

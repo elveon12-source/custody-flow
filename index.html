@@ -79,13 +79,21 @@
                     </div>
                 </div>
 
-                <div class="scanner-section">
-                    <div class="upload-zone" id="drop-zone">
-                        <i data-lucide="upload-cloud"></i>
-                        <h2>Încarcă Avizul</h2>
-                        <p>Trage fișierul aici sau apasă pentru a alege</p>
-                        <input type="file" id="file-input" hidden accept="image/*,application/pdf">
-                        <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">Alege Fișier</button>
+                <div class="scanner-section scanner-grid">
+                    <div class="upload-zone" id="drop-zone-in">
+                        <i data-lucide="package-plus"></i>
+                        <h2>1. INTRARE CUSTODIE</h2>
+                        <p>Scanează aviz pentru adăugare în stoc</p>
+                        <input type="file" id="file-input-in" hidden accept="image/*,application/pdf">
+                        <button class="btn btn-primary" onclick="document.getElementById('file-input-in').click()">Alege Aviz Intrare</button>
+                    </div>
+                    
+                    <div class="upload-zone remove-zone" id="drop-zone-out">
+                        <i data-lucide="package-minus"></i>
+                        <h2>2. IEȘIRE CUSTODIE</h2>
+                        <p>Scanează document pentru a scădea din stoc</p>
+                        <input type="file" id="file-input-out" hidden accept="image/*,application/pdf">
+                        <button class="btn btn-outline-danger" onclick="document.getElementById('file-input-out').click()">Alege Aviz Ieșire</button>
                     </div>
                 </div>
 
@@ -161,7 +169,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
