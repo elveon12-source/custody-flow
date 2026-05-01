@@ -1,23 +1,21 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, push, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-// TODO: Replace with the actual Firebase Config from the User
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDS3RpNrY5VgKD2T-2gGS6td9w_KRGJ-cs",
+  authDomain: "custody-flow.firebaseapp.com",
+  projectId: "custody-flow",
+  storageBucket: "custody-flow.firebasestorage.app",
+  messagingSenderId: "852899219082",
+  appId: "1:852899219082:web:ad920dbb329294ba21cf73",
+  databaseURL: "https://custody-flow-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
-// Initialize Firebase only if the config is not a placeholder
+// Initialize Firebase
 let db = null;
-if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
-    const app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-}
+const app = initializeApp(firebaseConfig);
+db = getDatabase(app);
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Lucide icons
