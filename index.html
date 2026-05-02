@@ -80,21 +80,21 @@
                 </div>
 
                 <div class="scanner-section scanner-grid">
-                    <div class="upload-zone" id="drop-zone-in">
+                    <label for="file-input-in" class="upload-zone" id="drop-zone-in" style="display: block; cursor: pointer;">
                         <i data-lucide="package-plus"></i>
                         <h2>1. INTRARE CUSTODIE</h2>
                         <p>Scanează aviz pentru adăugare în stoc</p>
-                        <input type="file" id="file-input-in" hidden accept="image/*" capture="environment">
-                        <button class="btn btn-primary" onclick="document.getElementById('file-input-in').click()">Alege / Scanează Aviz</button>
-                    </div>
+                        <input type="file" id="file-input-in" accept="image/*" capture="environment" style="display: none;">
+                        <span class="btn btn-primary" style="display: inline-block;">Alege / Scanează Aviz</span>
+                    </label>
                     
-                    <div class="upload-zone remove-zone" id="drop-zone-out">
+                    <label for="file-input-out" class="upload-zone remove-zone" id="drop-zone-out" style="display: block; cursor: pointer;">
                         <i data-lucide="package-minus"></i>
                         <h2>2. IEȘIRE CUSTODIE</h2>
                         <p>Scanează document pentru a scădea din stoc</p>
-                        <input type="file" id="file-input-out" hidden accept="image/*" capture="environment">
-                        <button class="btn btn-outline-danger" onclick="document.getElementById('file-input-out').click()">Alege / Scanează Ieșire</button>
-                    </div>
+                        <input type="file" id="file-input-out" accept="image/*" capture="environment" style="display: none;">
+                        <span class="btn btn-outline-danger" style="display: inline-block;">Alege / Scanează Ieșire</span>
+                    </label>
                 </div>
 
                 <div class="recent-scans-section">

@@ -91,12 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupDropZone(zone, input, actionType) {
         if (!zone) return; 
         
-        zone.addEventListener('click', () => input.click());
-        
         zone.addEventListener('dragover', (e) => {
             e.preventDefault();
             zone.style.borderColor = actionType === 'add' ? 'var(--primary)' : '#ef4444';
         });
+
 
         zone.addEventListener('dragleave', () => {
             zone.style.borderColor = 'var(--border-glass)';
