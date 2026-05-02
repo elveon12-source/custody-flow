@@ -223,26 +223,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         lines.forEach(line => {
             line = line.trim();
-            if (line.length < 5) return;
+            if (line.length < 3) return; // Skip very short lines
 
-            // Pattern: [Product Name] [UM: KG/BUC/PAL/BAX/M/MP] [Quantity]
-            const match = line.match(/^(.+?)\s+(KG|BUC|PAL|BAX|M|MP|ML|TON)\s+(\d+[\.,]?\d*)/i);
+            // More lenient pattern matching: [name] [UM (optional)] [qty]
+            const match = line.match(/^(.+?)\s*(KG|BUC|PAL|BAX|M|MP|ML|TON)?\s*(\d+[\.,]?\d*)$/i);
             if (match) {
                 const name = match[1].trim();
-                const unit = match[2].toUpperCase();
-                const qty = parseFloat(match[3].replace(',', '.')) || 0;
-                if (name && qty > 0) {
+                const unit = match[2] ? match[2].toUpperCase() : "BUC";
+                const qty = parseFloat(match[3].replace(',', '.')) || 1;
+                
+                if (name && !isNaN(qty)) {
                     items.push({ name, unit, qty });
                 }
             } else {
-                // Second pattern fallback
-                const fallbackMatch = line.match(/^(.+?)\s+(\d+[\.,]?\d*)$/i);
+                // Last word/number matching fallback
+                const fallbackMatch = line.match(/^(.+?)\s+(\d+[\.,]?\d*)\s*$/);
                 if (fallbackMatch) {
                     const name = fallbackMatch[1].trim();
-                    const qty = parseFloat(fallbackMatch[2].replace(',', '.')) || 0;
-                    if (name && qty > 0) {
+                    const qty = parseFloat(fallbackMatch[2].replace(',', '.')) || 1;
+                    if (name) {
                         items.push({ name, unit: "BUC", qty });
                     }
+                } else if (line.length > 5) {
+                    // Extract full line if nothing else matched
+                    items.push({ name: line, unit: "BUC", qty: 1 });
                 }
             }
         });
