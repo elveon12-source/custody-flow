@@ -48,8 +48,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentExtraction = null;
 
+    // --- Mode Management ---
+    const storageModeSelect = document.getElementById('storage-mode');
+    const currentMode = localStorage.getItem('custody_storage_mode') || 'local';
+    
+    if(storageModeSelect) {
+        storageModeSelect.value = currentMode;
+        storageModeSelect.addEventListener('change', (e) => {
+            localStorage.setItem('custody_storage_mode', e.target.value);
+            alert("Modul de stocare s-a schimbat. Se reîncarcă aplicația...");
+            window.location.reload();
+        });
+    }
+
     // --- Firebase Listeners & Fallback ---
-    if(db) {
+    if(currentMode === 'cloud' && db) {
         try {
             const inventoryRef = ref(db, 'inventory');
             onValue(inventoryRef, (snapshot) => {

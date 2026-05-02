@@ -32,6 +32,13 @@
                     <i data-lucide="boxes"></i> Stoc Custodie
                 </a>
             </nav>
+            <div class="sidebar-mode" style="padding: 10px 15px; border-top: 1px solid var(--border-glass);">
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Mod Stocare:</label>
+                <select id="storage-mode" class="btn btn-outline" style="width: 100%; font-size: 0.75rem; padding: 6px 8px; background: rgba(0,0,0,0.3); color: white; border-color: var(--border-glass);">
+                    <option value="local">Memorie Locală (Offline)</option>
+                    <option value="cloud">Cloud Sincronizat (Firebase)</option>
+                </select>
+            </div>
             <div class="sidebar-footer">
                 <p>v1.0.0</p>
                 <button class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 12px; margin-top: 8px; width: 100%; border-color: var(--accent-blue); color: var(--accent-blue);" onclick="forceAppUpdate()">Actualizează</button>
