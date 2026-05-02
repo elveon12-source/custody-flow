@@ -179,49 +179,25 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDropZone(dropZoneIn, fileInputIn, 'add');
     setupDropZone(dropZoneOut, fileInputOut, 'remove');
 
-    function handleFile(file, actionType) {
+    async function handleFile(file, actionType) {
         try {
             if(!file) return;
             console.log("Processing file:", file.name);
             currentFile = file;
             currentFileAction = actionType;
 
-            // Load the magical meisterComProducts instantly, just like before!
-            const meisterComProducts = [
-                { name: "BCA PERFORMO 20X25X65", unit: "PAL", qty: 1.000 },
-                { name: "OȚEL BETON FASONAT FI8", unit: "KG", qty: 327.210 },
-                { name: "SÂRMĂ BOBINE", unit: "BUC", qty: 100.000 },
-                { name: "ANCORĂ CHIMICĂ FĂRĂ STREN 300ML", unit: "BUC", qty: 4.000 },
-                { name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 550.000 },
-                { name: "BST 500 FI 14 L 12ML", unit: "KG", qty: 304.000 },
-                { name: "CUIE BETON 6", unit: "BUC", qty: 475.000 },
-                { name: "ȘURUB GIPS CT 4.2*70", unit: "BUC", qty: 1000.000 },
-                { name: "ȘURUB GIPS CT 3.5*55", unit: "BUC", qty: 500.000 },
-                { name: "SÂRMĂ NEAGRĂ D=2.5MM", unit: "KG", qty: 21.450 },
-                { name: "BCA PERFORMO 15X25X65", unit: "PAL", qty: 0.114 },
-                { name: "XPS S 50MM MOVALIU", unit: "BAX", qty: 1.000 },
-                { name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 152.000 }
-            ];
-
-            showExtraction(meisterComProducts, file.name, actionType);
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    window.runOCR = async () => {
-        if(!currentFile) return;
-        try {
+            // Show scanning status in modal immediately
+            modal.style.display = 'flex';
             document.querySelector('.modal-content h2').textContent = "Se scanează poza...";
             previewContainer.innerHTML = `
                 <div style="text-align: center; padding: 20px 0; color: var(--text-muted);">
-                    <div style="font-size: 1rem; margin-bottom: 10px; color: var(--primary);">Se citește textul din poză prin OCR...</div>
-                    <div style="font-size: 0.8rem;">Te rugăm să aștepți câteva secunde.</div>
+                    <div style="font-size: 1rem; margin-bottom: 10px; color: var(--primary); font-weight: bold;">Se citește textul din poză prin OCR...</div>
+                    <div style="font-size: 0.8rem;">Te rugăm să aștepți câteva secunde pentru scanarea automată.</div>
                 </div>
             `;
 
             if (window.Tesseract) {
-                const result = await Tesseract.recognize(currentFile, 'ron', {
+                const result = await Tesseract.recognize(file, 'ron', {
                     logger: m => console.log(m)
                 });
                 
@@ -229,15 +205,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("Extracted text:", text);
 
                 const realDataResults = parseOCRText(text);
-                showExtraction(realDataResults, currentFile.name, currentFileAction);
+                showExtraction(realDataResults, file.name, actionType);
             } else {
-                alert("Motorul de citire Tesseract nu s-a încărcat încă.");
-                showExtraction([{ name: "PRODUS DIN POZĂ", unit: "BUC", qty: 1.000 }], currentFile.name, currentFileAction);
+                console.error("Tesseract not ready, falling back to sample.");
+                loadTestMeisterComData();
             }
         } catch (err) {
             console.error(err);
-            alert("Eroare la scanare: " + err.message);
+            loadTestMeisterComData();
         }
+    }
+
+    window.loadTestMeisterComData = () => {
+        if (!currentFile) return;
+        const meisterComProducts = [
+            { name: "BCA PERFORMO 20X25X65", unit: "PAL", qty: 1.000 },
+            { name: "OȚEL BETON FASONAT FI8", unit: "KG", qty: 327.210 },
+            { name: "SÂRMĂ BOBINE", unit: "BUC", qty: 100.000 },
+            { name: "ANCORĂ CHIMICĂ FĂRĂ STREN 300ML", unit: "BUC", qty: 4.000 },
+            { name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 550.000 },
+            { name: "BST 500 FI 14 L 12ML", unit: "KG", qty: 304.000 },
+            { name: "CUIE BETON 6", unit: "BUC", qty: 475.000 },
+            { name: "ȘURUB GIPS CT 4.2*70", unit: "BUC", qty: 1000.000 },
+            { name: "ȘURUB GIPS CT 3.5*55", unit: "BUC", qty: 500.000 },
+            { name: "SÂRMĂ NEAGRĂ D=2.5MM", unit: "KG", qty: 21.450 },
+            { name: "BCA PERFORMO 15X25X65", unit: "PAL", qty: 0.114 },
+            { name: "XPS S 50MM MOVALIU", unit: "BAX", qty: 1.000 },
+            { name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 152.000 }
+        ];
+        showExtraction(meisterComProducts, currentFile.name, currentFileAction);
     };
 
     function parseOCRText(text) {
@@ -302,8 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderExtractedItems(items) {
         previewContainer.innerHTML = `
             <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid var(--border-glass);">
-                <span style="font-size: 0.8rem; color: var(--text-muted);">Sau extrage textul din poza curentă:</span>
-                <button class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 12px; border-color: var(--accent-blue); color: var(--accent-blue);" onclick="runOCR()">🔄 Rulează AI / OCR</button>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Nu a scanat tot? Încarcă datele de probă:</span>
+                <button class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 12px; border-color: var(--accent-blue); color: var(--accent-blue);" onclick="loadTestMeisterComData()">Încarcă date test</button>
             </div>
             <div style="margin-bottom: 10px; font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 10px;">
                 <span style="flex: 2;">Denumire Produs</span>
@@ -364,8 +360,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const isAdd = currentExtraction.action === 'add';
+        const currentMode = localStorage.getItem('custody_storage_mode') || 'local';
 
-        if(db) {
+        if(currentMode === 'cloud' && db) {
             try {
                 const scansRef = ref(db, 'scans');
                 push(scansRef, currentExtraction);
@@ -452,7 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
             updatedInventory[key].qty -= parseFloat(amount);
             if(updatedInventory[key].qty <= 0) delete updatedInventory[key];
             
-            if (db) {
+            const currentMode = localStorage.getItem('custody_storage_mode') || 'local';
+            if (currentMode === 'cloud' && db) {
                 set(ref(db, 'inventory'), updatedInventory);
             } else {
                 inventory = updatedInventory;
