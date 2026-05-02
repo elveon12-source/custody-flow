@@ -177,21 +177,81 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDropZone(dropZoneIn, fileInputIn, 'add');
     setupDropZone(dropZoneOut, fileInputOut, 'remove');
 
-    function handleFile(file, actionType) {
+    async function handleFile(file, actionType) {
         try {
             if(!file) return;
             console.log("Processing file:", file.name);
-            
-            // Generate a default product when taking a picture,
-            // to make the scanning directly dynamic!
-            const realDataResults = [
-                { id: 1, name: "PRODUS NOU DIN POZĂ", unit: "BUC", qty: 1.000 }
-            ];
 
-            showExtraction(realDataResults, file.name, actionType);
+            // Show scanning status in modal
+            modal.style.display = 'flex';
+            document.querySelector('.modal-content h2').textContent = "Se scanează poza...";
+            previewContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px 0; color: var(--text-muted);">
+                    <div style="font-size: 1rem; margin-bottom: 10px; color: var(--primary);">Se citește textul din poză prin OCR...</div>
+                    <div style="font-size: 0.8rem;">Te rugăm să aștepți câteva secunde.</div>
+                </div>
+            `;
+
+            // Read the image using Tesseract.js
+            if (window.Tesseract) {
+                const result = await Tesseract.recognize(file, 'ron', {
+                    logger: m => console.log(m)
+                });
+                
+                const text = result.data.text;
+                console.log("Extracted text:", text);
+
+                const realDataResults = parseOCRText(text);
+                showExtraction(realDataResults, file.name, actionType);
+            } else {
+                console.error("Tesseract library not loaded.");
+                const fallbackItems = [{ id: 1, name: "PRODUS DIN POZĂ", unit: "BUC", qty: 1.000 }];
+                showExtraction(fallbackItems, file.name, actionType);
+            }
         } catch (err) {
             console.error(err);
+            alert("Eroare la scanare: " + err.message);
+            const fallbackItems = [{ id: 1, name: "PRODUS DIN POZĂ", unit: "BUC", qty: 1.000 }];
+            showExtraction(fallbackItems, file.name, actionType);
         }
+    }
+
+    function parseOCRText(text) {
+        if (!text) return [];
+        const lines = text.split('\n');
+        const items = [];
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (line.length < 5) return;
+
+            // Pattern: [Product Name] [UM: KG/BUC/PAL/BAX/M/MP] [Quantity]
+            const match = line.match(/^(.+?)\s+(KG|BUC|PAL|BAX|M|MP|ML|TON)\s+(\d+[\.,]?\d*)/i);
+            if (match) {
+                const name = match[1].trim();
+                const unit = match[2].toUpperCase();
+                const qty = parseFloat(match[3].replace(',', '.')) || 0;
+                if (name && qty > 0) {
+                    items.push({ name, unit, qty });
+                }
+            } else {
+                // Second pattern fallback
+                const fallbackMatch = line.match(/^(.+?)\s+(\d+[\.,]?\d*)$/i);
+                if (fallbackMatch) {
+                    const name = fallbackMatch[1].trim();
+                    const qty = parseFloat(fallbackMatch[2].replace(',', '.')) || 0;
+                    if (name && qty > 0) {
+                        items.push({ name, unit: "BUC", qty });
+                    }
+                }
+            }
+        });
+
+        // Ensure we always have at least one editable row for fallback
+        if (items.length === 0) {
+            items.push({ name: "PRODUS DIN POZĂ", unit: "BUC", qty: 1.000 });
+        }
+        return items;
     }
 
     function showExtraction(items, fileName, actionType) {
