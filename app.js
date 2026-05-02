@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { getDatabase, ref, onValue, set, push } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDS3RpNrY5VgKD2T-2gGS6td9w_KRGJ-cs",
@@ -11,15 +11,26 @@ const firebaseConfig = {
   databaseURL: "https://custody-flow-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
-// Initialize Firebase
-let db = null;
-const app = initializeApp(firebaseConfig);
-db = getDatabase(app);
+// Also try the other common default in case the first one fails
+const alternativeDatabaseURL = "https://custody-flow-default-rtdb.firebaseio.com";
 
+let db = null;
+try {
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+} catch (err) {
+    console.error("Primary Firebase initialization failed, trying alternative URL:", err);
+    try {
+        const appAlt = initializeApp({ ...firebaseConfig, databaseURL: alternativeDatabaseURL });
+        db = getDatabase(appAlt);
+    } catch (e) {
+        console.error("All Firebase attempts failed, operating in offline/fallback mode.");
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Lucide icons
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 
     // State
     let scans = [];
@@ -37,26 +48,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentExtraction = null;
 
-    // --- Firebase Listeners ---
+    // --- Firebase Listeners & Fallback ---
     if(db) {
-        const inventoryRef = ref(db, 'inventory');
-        onValue(inventoryRef, (snapshot) => {
-            inventory = snapshot.val() || {};
-            renderInventory();
-            updateStats();
-        });
+        try {
+            const inventoryRef = ref(db, 'inventory');
+            onValue(inventoryRef, (snapshot) => {
+                inventory = snapshot.val() || {};
+                renderInventory();
+                updateStats();
+            });
 
-        const scansRef = ref(db, 'scans');
-        onValue(scansRef, (snapshot) => {
-            const data = snapshot.val();
-            // Convert object to array and sort by latest
-            scans = data ? Object.values(data).sort((a,b) => b.timestamp - a.timestamp) : [];
+            const scansRef = ref(db, 'scans');
+            onValue(scansRef, (snapshot) => {
+                const data = snapshot.val();
+                scans = data ? Object.values(data).sort((a,b) => b.timestamp - a.timestamp) : [];
+                renderRecentScans();
+                renderScans();
+                updateStats();
+            });
+        } catch (err) {
+            console.error("Firebase runtime error, loading local fallback:", err);
+            loadLocalStorage();
+        }
+    } else {
+        loadLocalStorage();
+    }
+
+    function loadLocalStorage() {
+        try {
+            inventory = JSON.parse(localStorage.getItem('custody_inventory')) || {};
+            scans = JSON.parse(localStorage.getItem('custody_scans')) || [];
+            renderInventory();
             renderRecentScans();
             renderScans();
             updateStats();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function saveLocally(extraction) {
+        scans.unshift(extraction);
+        localStorage.setItem('custody_scans', JSON.stringify(scans));
+
+        const isAdd = extraction.action === 'add';
+        extraction.items.forEach(item => {
+            const key = item.name.replace(/[\.#\$\/\[\]]/g, '_');
+            if(inventory[key]) {
+                inventory[key].qty += isAdd ? item.qty : -item.qty;
+            } else if (isAdd) {
+                inventory[key] = { name: item.name, unit: item.unit, qty: item.qty };
+            }
+            if(inventory[key] && inventory[key].qty <= 0) {
+                delete inventory[key];
+            }
         });
-    } else {
-        alert("Configurarea Firebase lipsește! Aplicația va afișa un stoc gol până când adăugăm cheile bazei de date.");
+        localStorage.setItem('custody_inventory', JSON.stringify(inventory));
+        renderInventory();
+        renderRecentScans();
+        renderScans();
+        updateStats();
     }
 
     // --- Navigation ---
@@ -82,9 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Stats ---
     function updateStats() {
-        document.getElementById('total-scans').textContent = scans.length;
-        document.getElementById('total-products').textContent = Object.keys(inventory).length;
-        document.getElementById('last-scan-date').textContent = scans.length > 0 ? scans[0].date : '-';
+        if(document.getElementById('total-scans')) document.getElementById('total-scans').textContent = scans.length;
+        if(document.getElementById('total-products')) document.getElementById('total-products').textContent = Object.keys(inventory).length;
+        if(document.getElementById('last-scan-date')) document.getElementById('last-scan-date').textContent = scans.length > 0 ? scans[0].date : '-';
     }
 
     // --- File Handling & "OCR" Mock ---
@@ -95,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             zone.style.borderColor = actionType === 'add' ? 'var(--primary)' : '#ef4444';
         });
-
 
         zone.addEventListener('dragleave', () => {
             zone.style.borderColor = 'var(--border-glass)';
@@ -118,15 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleFile(file, actionType) {
         try {
-            if(!db) {
-                alert("Baza de date Firebase nu este conectată! Verifică configurarea.");
-                return;
-            }
-            if(!file) {
-                alert("Nu a fost detectat niciun fișier.");
-                return;
-            }
-            alert("Fișier detectat: " + file.name + " (" + file.size + " bytes). Se procesează...");
+            if(!file) return;
             console.log("Processing file:", file.name);
             
             const realDataResults = [
@@ -147,11 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showExtraction(realDataResults, file.name, actionType);
         } catch (err) {
-            alert("Eroare la procesarea fișierului: " + err.message);
             console.error(err);
         }
     }
-
 
     function showExtraction(items, fileName, actionType) {
         currentExtraction = {
@@ -186,43 +226,52 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.confirmExtraction = async () => {
-        if(!currentExtraction || !db) return;
+        if(!currentExtraction) return;
 
-        // Push to history in DB
-        const scansRef = ref(db, 'scans');
-        push(scansRef, currentExtraction);
-
-        // Update Inventory in DB
         const isAdd = currentExtraction.action === 'add';
-        
-        // We calculate locally and then push the whole state, 
-        // In a complex app we would use Firebase Transactions to avoid race conditions.
-        let updatedInventory = { ...inventory };
 
-        currentExtraction.items.forEach(item => {
-            const key = item.name.replace(/[\.#\$\/\[\]]/g, '_');
-            if(updatedInventory[key]) {
-                updatedInventory[key].qty += isAdd ? item.qty : -item.qty;
-            } else if (isAdd) {
-                updatedInventory[key] = { name: item.name, unit: item.unit, qty: item.qty };
+        if(db) {
+            try {
+                // Push to history in DB
+                const scansRef = ref(db, 'scans');
+                push(scansRef, currentExtraction);
+
+                // Update Inventory in DB
+                let updatedInventory = { ...inventory };
+
+                currentExtraction.items.forEach(item => {
+                    const key = item.name.replace(/[\.#\$\/\[\]]/g, '_');
+                    if(updatedInventory[key]) {
+                        updatedInventory[key].qty += isAdd ? item.qty : -item.qty;
+                    } else if (isAdd) {
+                        updatedInventory[key] = { name: item.name, unit: item.unit, qty: item.qty };
+                    }
+                    if(updatedInventory[key] && updatedInventory[key].qty <= 0) {
+                        delete updatedInventory[key];
+                    }
+                });
+
+                // Save back to DB
+                set(ref(db, 'inventory'), updatedInventory);
+                closeModal();
+                alert(isAdd ? "Datele au fost adăugate cu succes în Cloud!" : "Produsele au fost scăzute din stocul Cloud!");
+            } catch (err) {
+                console.error("Firebase write failed, using local storage fallback", err);
+                saveLocally(currentExtraction);
+                closeModal();
+                alert(isAdd ? "Salvat local (Eroare Firebase)" : "Scăzut local (Eroare Firebase)");
             }
-            
-            // Remove if 0 or negative
-            if(updatedInventory[key] && updatedInventory[key].qty <= 0) {
-                delete updatedInventory[key];
-            }
-        });
-
-        // Save back to DB
-        set(ref(db, 'inventory'), updatedInventory);
-
-        closeModal();
-        alert(isAdd ? "Datele au fost adăugate cu succes în Cloud!" : "Produsele au fost scăzute din stocul Cloud!");
+        } else {
+            saveLocally(currentExtraction);
+            closeModal();
+            alert(isAdd ? "Datele au fost adăugate cu succes local!" : "Produsele au fost scăzute din stocul local!");
+        }
     };
 
     // --- Rendering ---
     function renderRecentScans() {
         const tbody = document.querySelector('#recent-scans-table tbody');
+        if(!tbody) return;
         if(!scans || scans.length === 0) {
             tbody.innerHTML = '<tr class="empty-row"><td colspan="4">Nicio scanare recentă</td></tr>';
             return;
@@ -240,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderInventory() {
         const tbody = document.getElementById('inventory-body');
+        if(!tbody) return;
         const items = Object.entries(inventory);
         
         if(items.length === 0) {
@@ -263,7 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.removeStock = (key) => {
-        if(!db) return;
         const displayName = inventory[key] ? (inventory[key].name || key) : key;
         const amount = prompt(`Cât dorești să scazi din stocul pentru "${displayName}"?`);
         if(amount && !isNaN(amount)) {
@@ -271,12 +320,20 @@ document.addEventListener('DOMContentLoaded', () => {
             updatedInventory[key].qty -= parseFloat(amount);
             if(updatedInventory[key].qty <= 0) delete updatedInventory[key];
             
-            set(ref(db, 'inventory'), updatedInventory);
+            if (db) {
+                set(ref(db, 'inventory'), updatedInventory);
+            } else {
+                inventory = updatedInventory;
+                localStorage.setItem('custody_inventory', JSON.stringify(inventory));
+                renderInventory();
+                updateStats();
+            }
         }
     };
 
     function renderScans() {
         const list = document.getElementById('scans-list');
+        if(!list) return;
         list.innerHTML = scans.map(scan => `
             <div class="stat-card" style="margin-bottom: 1rem; justify-content: space-between;">
                 <div>
@@ -292,7 +349,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.exportToCSV = () => {
         let csv = "Produs,UM,Cantitate\n";
-        Object.entries(inventory).forEach(([name, data]) => {
+        Object.entries(inventory).forEach(([key, data]) => {
+            const name = data.name || key;
             csv += `${name},${data.unit},${data.qty}\n`;
         });
         
@@ -307,7 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(a);
     };
 
-    // Initial render call (will be overwritten by Firebase when data loads)
     renderRecentScans();
     updateStats();
 });
