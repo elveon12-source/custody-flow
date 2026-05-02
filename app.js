@@ -11,7 +11,6 @@ const firebaseConfig = {
   databaseURL: "https://custody-flow-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
-// Also try the other common default in case the first one fails
 const alternativeDatabaseURL = "https://custody-flow-default-rtdb.firebaseio.com";
 
 let db = null;
@@ -29,7 +28,6 @@ try {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize Lucide icons
     if (window.lucide) lucide.createIcons();
 
     // State
@@ -184,20 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!file) return;
             console.log("Processing file:", file.name);
             
+            // Generate a default product when taking a picture,
+            // to make the scanning directly dynamic!
             const realDataResults = [
-                { id: 1, name: "BCA PERFORMO 20X25X65", unit: "PAL", qty: 1.000 },
-                { id: 2, name: "OȚEL BETON FASONAT FI8", unit: "KG", qty: 327.210 },
-                { id: 3, name: "SÂRMĂ BOBINE", unit: "BUC", qty: 100.000 },
-                { id: 4, name: "ANCORĂ CHIMICĂ FĂRĂ STREN 300ML", unit: "BUC", qty: 4.000 },
-                { id: 5, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 550.000 },
-                { id: 6, name: "BST 500 FI 14 L 12ML", unit: "KG", qty: 304.000 },
-                { id: 8, name: "CUIE BETON 6", unit: "BUC", qty: 475.000 },
-                { id: 9, name: "ȘURUB GIPS CT 4.2*70", unit: "BUC", qty: 1000.000 },
-                { id: 10, name: "ȘURUB GIPS CT 3.5*55", unit: "BUC", qty: 500.000 },
-                { id: 11, name: "SÂRMĂ NEAGRĂ D=2.5MM", unit: "KG", qty: 21.450 },
-                { id: 12, name: "BCA PERFORMO 15X25X65", unit: "PAL", qty: 0.114 },
-                { id: 14, name: "XPS S 50MM MOVALIU", unit: "BAX", qty: 1.000 },
-                { id: 15, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 152.000 }
+                { id: 1, name: "PRODUS NOU DIN POZĂ", unit: "BUC", qty: 1.000 }
             ];
 
             showExtraction(realDataResults, file.name, actionType);
@@ -217,21 +205,49 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const isAdd = actionType === 'add';
-        document.querySelector('.modal-content h2').textContent = isAdd ? 'Date Extrase (Intrare)' : 'Date Extrase (Ieșire)';
+        document.querySelector('.modal-content h2').textContent = isAdd ? 'Verifică Date (Intrare)' : 'Verifică Date (Ieșire)';
         
         const btnConfirm = document.querySelector('.modal-footer button:last-child');
         btnConfirm.textContent = isAdd ? 'Confirmă și Adaugă' : 'Confirmă și Scade';
         btnConfirm.className = isAdd ? 'btn btn-primary' : 'btn btn-outline-danger';
         
-        previewContainer.innerHTML = items.map(item => `
-            <div class="extract-row">
-                <span><strong>${item.name}</strong></span>
-                <span>${item.qty} ${item.unit}</span>
-            </div>
-        `).join('');
-
+        renderExtractedItems(items);
         modal.style.display = 'flex';
     }
+
+    function renderExtractedItems(items) {
+        previewContainer.innerHTML = `
+            <div style="margin-bottom: 10px; font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 10px;">
+                <span style="flex: 2;">Denumire Produs</span>
+                <span style="flex: 1;">UM</span>
+                <span style="flex: 1;">Cantitate</span>
+                <span style="width: 30px;"></span>
+            </div>
+            <div id="items-rows-container">
+                ${items.map((item, index) => `
+                    <div class="extract-row" style="display: flex; gap: 10px; margin-bottom: 8px;" data-index="${index}">
+                        <input type="text" class="item-name" value="${item.name}" style="flex: 2; padding: 6px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-glass); background: rgba(0,0,0,0.3); color: white;" placeholder="Nume produs">
+                        <input type="text" class="item-unit" value="${item.unit}" style="flex: 1; padding: 6px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-glass); background: rgba(0,0,0,0.3); color: white;" placeholder="UM">
+                        <input type="number" class="item-qty" value="${item.qty}" style="flex: 1; padding: 6px; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-glass); background: rgba(0,0,0,0.3); color: white;" placeholder="Cantitate" step="0.001">
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.7rem; border-color: #ef4444; color: #ef4444;" onclick="removeExtractedItem(${index})">X</button>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-outline" style="width: 100%; margin-top: 10px; font-size: 0.8rem; border-color: var(--primary); color: var(--primary);" onclick="addExtractedRow()">+ Adaugă Produs Nou</button>
+        `;
+    }
+
+    window.removeExtractedItem = (index) => {
+        if(!currentExtraction) return;
+        currentExtraction.items.splice(index, 1);
+        renderExtractedItems(currentExtraction.items);
+    };
+
+    window.addExtractedRow = () => {
+        if(!currentExtraction) return;
+        currentExtraction.items.push({ name: "", unit: "BUC", qty: 1 });
+        renderExtractedItems(currentExtraction.items);
+    };
 
     window.closeModal = () => {
         modal.style.display = 'none';
@@ -241,15 +257,32 @@ document.addEventListener('DOMContentLoaded', () => {
     window.confirmExtraction = async () => {
         if(!currentExtraction) return;
 
+        // Read updated values from DOM inputs
+        const rows = document.querySelectorAll('#items-rows-container .extract-row');
+        currentExtraction.items = [];
+        
+        rows.forEach(row => {
+            const name = row.querySelector('.item-name').value.trim();
+            const unit = row.querySelector('.item-unit').value.trim();
+            const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+            
+            if(name && qty > 0) {
+                currentExtraction.items.push({ name, unit, qty });
+            }
+        });
+        
+        if (currentExtraction.items.length === 0) {
+            alert("Te rugăm să adaugi cel puțin un produs valid.");
+            return;
+        }
+
         const isAdd = currentExtraction.action === 'add';
 
         if(db) {
             try {
-                // Push to history in DB
                 const scansRef = ref(db, 'scans');
                 push(scansRef, currentExtraction);
 
-                // Update Inventory in DB
                 let updatedInventory = { ...inventory };
 
                 currentExtraction.items.forEach(item => {
@@ -264,12 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // Save back to DB
                 set(ref(db, 'inventory'), updatedInventory);
                 closeModal();
                 alert(isAdd ? "Datele au fost adăugate cu succes în Cloud!" : "Produsele au fost scăzute din stocul Cloud!");
             } catch (err) {
-                console.error("Firebase write failed, using local storage fallback", err);
+                console.error("Firebase write failed", err);
                 saveLocally(currentExtraction);
                 closeModal();
                 alert(isAdd ? "Salvat local (Eroare Firebase)" : "Scăzut local (Eroare Firebase)");
