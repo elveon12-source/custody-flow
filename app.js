@@ -200,15 +200,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let updatedInventory = { ...inventory };
 
         currentExtraction.items.forEach(item => {
-            if(updatedInventory[item.name]) {
-                updatedInventory[item.name].qty += isAdd ? item.qty : -item.qty;
+            const key = item.name.replace(/[\.#\$\/\[\]]/g, '_');
+            if(updatedInventory[key]) {
+                updatedInventory[key].qty += isAdd ? item.qty : -item.qty;
             } else if (isAdd) {
-                updatedInventory[item.name] = { unit: item.unit, qty: item.qty };
+                updatedInventory[key] = { name: item.name, unit: item.unit, qty: item.qty };
             }
             
             // Remove if 0 or negative
-            if(updatedInventory[item.name] && updatedInventory[item.name].qty <= 0) {
-                delete updatedInventory[item.name];
+            if(updatedInventory[key] && updatedInventory[key].qty <= 0) {
+                delete updatedInventory[key];
             }
         });
 
@@ -246,25 +247,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        tbody.innerHTML = items.map(([name, data]) => `
-            <tr>
-                <td><strong>${name}</strong></td>
-                <td>${data.unit}</td>
-                <td>${data.qty}</td>
-                <td>
-                    <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.7rem;" onclick="removeStock('${name}')">Scade</button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = items.map(([key, data]) => {
+            const displayName = data.name || key;
+            return `
+                <tr>
+                    <td><strong>${displayName}</strong></td>
+                    <td>${data.unit}</td>
+                    <td>${data.qty}</td>
+                    <td>
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.7rem;" onclick="removeStock('${key}')">Scade</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
-    window.removeStock = (name) => {
+    window.removeStock = (key) => {
         if(!db) return;
-        const amount = prompt(`Cât dorești să scazi din stocul pentru "${name}"?`);
+        const displayName = inventory[key] ? (inventory[key].name || key) : key;
+        const amount = prompt(`Cât dorești să scazi din stocul pentru "${displayName}"?`);
         if(amount && !isNaN(amount)) {
             let updatedInventory = { ...inventory };
-            updatedInventory[name].qty -= parseFloat(amount);
-            if(updatedInventory[name].qty <= 0) delete updatedInventory[name];
+            updatedInventory[key].qty -= parseFloat(amount);
+            if(updatedInventory[key].qty <= 0) delete updatedInventory[key];
             
             set(ref(db, 'inventory'), updatedInventory);
         }
