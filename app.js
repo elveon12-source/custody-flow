@@ -245,6 +245,9 @@ document.addEventListener('DOMContentLoaded', () => {
             line = line.trim();
             if (line.length < 3) return;
 
+            // Remove leading numbering like "1. ", "2) ", "1 ", "[1] "
+            line = line.replace(/^\s*\d+[\.\)\s\]\-]+\s*/, '');
+
             const match = line.match(/^(.+?)\s*(KG|BUC|PAL|BAX|M|MP|ML|TON)?\s*(\d+[\.,]?\d*)$/i);
             if (match) {
                 const name = match[1].trim();
