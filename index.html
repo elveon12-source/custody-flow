@@ -34,6 +34,7 @@
             </nav>
             <div class="sidebar-footer">
                 <p>v1.0.0</p>
+                <button class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 12px; margin-top: 8px; width: 100%; border-color: var(--accent-blue); color: var(--accent-blue);" onclick="forceAppUpdate()">Actualizează</button>
             </div>
         </aside>
 
@@ -182,6 +183,25 @@
                     });
             });
         }
+
+        window.forceAppUpdate = () => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                    caches.keys().then((names) => {
+                        for (let name of names) {
+                            caches.delete(name);
+                        }
+                        alert("Aplicația se actualizează...");
+                        window.location.reload(true);
+                    });
+                });
+            } else {
+                window.location.reload(true);
+            }
+        };
     </script>
 </body>
 </html>
