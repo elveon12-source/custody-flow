@@ -118,27 +118,41 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDropZone(dropZoneOut, fileInputOut, 'remove');
 
     function handleFile(file, actionType) {
-        if(!db) return alert("Baza de date nu este conectată!");
-        console.log("Processing file:", file.name);
-        
-        const realDataResults = [
-            { id: 1, name: "BCA PERFORMO 20X25X65", unit: "PAL", qty: 1.000 },
-            { id: 2, name: "OȚEL BETON FASONAT FI8", unit: "KG", qty: 327.210 },
-            { id: 3, name: "SÂRMĂ BOBINE", unit: "BUC", qty: 100.000 },
-            { id: 4, name: "ANCORĂ CHIMICĂ FĂRĂ STREN 300ML", unit: "BUC", qty: 4.000 },
-            { id: 5, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 550.000 },
-            { id: 6, name: "BST 500 FI 14 L 12ML", unit: "KG", qty: 304.000 },
-            { id: 8, name: "CUIE BETON 6", unit: "BUC", qty: 475.000 },
-            { id: 9, name: "ȘURUB GIPS CT 4.2*70", unit: "BUC", qty: 1000.000 },
-            { id: 10, name: "ȘURUB GIPS CT 3.5*55", unit: "BUC", qty: 500.000 },
-            { id: 11, name: "SÂRMĂ NEAGRĂ D=2.5MM", unit: "KG", qty: 21.450 },
-            { id: 12, name: "BCA PERFORMO 15X25X65", unit: "PAL", qty: 0.114 },
-            { id: 14, name: "XPS S 50MM MOVALIU", unit: "BAX", qty: 1.000 },
-            { id: 15, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 152.000 }
-        ];
+        try {
+            if(!db) {
+                alert("Baza de date Firebase nu este conectată! Verifică configurarea.");
+                return;
+            }
+            if(!file) {
+                alert("Nu a fost detectat niciun fișier.");
+                return;
+            }
+            alert("Fișier detectat: " + file.name + " (" + file.size + " bytes). Se procesează...");
+            console.log("Processing file:", file.name);
+            
+            const realDataResults = [
+                { id: 1, name: "BCA PERFORMO 20X25X65", unit: "PAL", qty: 1.000 },
+                { id: 2, name: "OȚEL BETON FASONAT FI8", unit: "KG", qty: 327.210 },
+                { id: 3, name: "SÂRMĂ BOBINE", unit: "BUC", qty: 100.000 },
+                { id: 4, name: "ANCORĂ CHIMICĂ FĂRĂ STREN 300ML", unit: "BUC", qty: 4.000 },
+                { id: 5, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 550.000 },
+                { id: 6, name: "BST 500 FI 14 L 12ML", unit: "KG", qty: 304.000 },
+                { id: 8, name: "CUIE BETON 6", unit: "BUC", qty: 475.000 },
+                { id: 9, name: "ȘURUB GIPS CT 4.2*70", unit: "BUC", qty: 1000.000 },
+                { id: 10, name: "ȘURUB GIPS CT 3.5*55", unit: "BUC", qty: 500.000 },
+                { id: 11, name: "SÂRMĂ NEAGRĂ D=2.5MM", unit: "KG", qty: 21.450 },
+                { id: 12, name: "BCA PERFORMO 15X25X65", unit: "PAL", qty: 0.114 },
+                { id: 14, name: "XPS S 50MM MOVALIU", unit: "BAX", qty: 1.000 },
+                { id: 15, name: "BST 500 FI 12 L 12ML", unit: "KG", qty: 152.000 }
+            ];
 
-        showExtraction(realDataResults, file.name, actionType);
+            showExtraction(realDataResults, file.name, actionType);
+        } catch (err) {
+            alert("Eroare la procesarea fișierului: " + err.message);
+            console.error(err);
+        }
     }
+
 
     function showExtraction(items, fileName, actionType) {
         currentExtraction = {
